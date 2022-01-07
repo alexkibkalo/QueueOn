@@ -1,0 +1,93 @@
+version: '3'
+services:
+  queue-on:
+    container_name: queueon
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - kibana
+      - keycloak
+    networks:
+      - queueon
+
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.2
+    volumes:
+      - elasticsearch:/usr/share/elasticsearch/data
+    environment:
+      - discovery.type=single-node
+    hostname: localhost
+    ports:
+      - 9200:9200
+    networks:
+      - queueon
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.16.2
+    container_name: kibana
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    networks:
+      - queueon
+
+  postgres:
+    container_name: postgres
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - postgres:/var/lib/postgres
+    hostname: localhost
+    ports:
+      - 5000:5432
+    networks:
+      - queueon
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: 'dev@gmail.com'
+      PGADMIN_DEFAULT_PASSWORD: root
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    ports:
+      - 5050:80
+    depends_on:
+      - postgres
+    networks:
+      - queueon
+
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:16.1.0
+    environment:
+      DB_VENDOR: POSTGRES
+      DB_ADDR: postgres
+      DB_DATABASE: keycloak
+      DB_USER: postgres
+      DB_SCHEMA: public
+      DB_PASSWORD: admin
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+    ports:
+      - 8180:8080
+    depends_on:
+      - postgres
+    networks:
+      - queueon
+
+volumes:
+  postgres:
+  pgadmin:
+  elasticsearch:
+    driver: local
+
+networks:
+  queueon:
